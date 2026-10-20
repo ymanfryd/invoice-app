@@ -20,6 +20,7 @@ const invoiceSchema = z.object({
     )
     .min(1),
 });
+const idSchema = z.coerce.number().int().positive();
 
 router.get('/', async (ctx) => {
   const limit = Math.min(Number(ctx.query.limit) || 20, 100);
@@ -33,6 +34,43 @@ router.get('/', async (ctx) => {
     [limit, offset],
   );
   ctx.body = result.rows;
+});
+
+router.get('/:id', async (ctx) => {
+  const parsedId = idSchema.safeParse(ctx.params.id);
+    if (!parsedId.success) {
+    ctx.status = 400;
+    ctx.body = { error: 'Invalid invoice id' };
+    return;
+  }
+  const id = parsedId.data;
+
+  const header = await pool.query(
+    `SELECT i.id, i.number, i.currency, i.status, i.issued_at, i.created_at,
+            c.id AS client_id, c.name AS client_name, c.inn AS client_inn,
+            ROUND(COALESCE(SUM(it.quantity * it.unit_price), 0), 2) AS total
+     FROM invoices i
+     JOIN clients c ON c.id = i.client_id
+     LEFT JOIN invoice_items it ON it.invoice_id = i.id
+     WHERE i.id = $1
+     GROUP BY i.id, c.id`,
+    [id],
+  );
+   if (header.rows.length === 0) {
+    ctx.status = 404;
+    ctx.body = { error: 'Invoice not found' };
+    return;
+  }
+
+  const items = await pool.query(
+    `SELECT id, description, quantity, unit_price
+     FROM invoice_items
+     WHERE invoice_id = $1
+     ORDER BY id`,
+    [id],
+  );
+
+  ctx.body = { ...header.rows[0], items: items.rows };
 });
 
 router.post('/', async (ctx) => {
