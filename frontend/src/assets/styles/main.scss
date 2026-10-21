@@ -1,0 +1,22 @@
+$color-text: #1f2937;
+$color-muted: #6b7280;
+$color-accent: #2563eb;
+$color-border: #e5e7eb;
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, sans-serif;
+  color: $color-text;
+}
+
+#app {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px;
+}
